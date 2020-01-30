@@ -31,6 +31,9 @@
     <SolidColorBrush x:Key="MaterialDesignSnackbarBackground" Color="#FFCDCDCD" po:Freeze="True" />
     <SolidColorBrush x:Key="MaterialDesignSnackbarMouseOver" Color="#FFB9B9BD" po:Freeze="True" />
     <SolidColorBrush x:Key="MaterialDesignSnackbarRipple" Color="#FF494949" po:Freeze="True" />
+    <SolidColorBrush x:Key="MaterialDesignBannerBackground" Color="#FFCDCDCD" po:Freeze="True" />
+    <SolidColorBrush x:Key="MaterialDesignBannerMouseOver" Color="#FFB9B9BD" po:Freeze="True" />
+    <SolidColorBrush x:Key="MaterialDesignBannerRipple" Color="#FF494949" po:Freeze="True" />
 
     <SolidColorBrush x:Key="MaterialDesignTextFieldBoxBackground" Color="#1AFFFFFF" po:Freeze="True" /> <!-- 10% white -->
     <SolidColorBrush x:Key="MaterialDesignTextFieldBoxHoverBackground" Color="#1FFFFFFF" po:Freeze="True" /> <!-- 12% white -->

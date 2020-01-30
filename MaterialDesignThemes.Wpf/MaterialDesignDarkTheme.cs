@@ -24,6 +24,9 @@ namespace MaterialDesignThemes.Wpf
         public Color MaterialDesignSnackbarBackground { get; } = (Color)ColorConverter.ConvertFromString("#FFCDCDCD");
         public Color MaterialDesignSnackbarMouseOver { get; } = (Color)ColorConverter.ConvertFromString("#FFB9B9BD");
         public Color MaterialDesignSnackbarRipple { get; } = (Color)ColorConverter.ConvertFromString("#FF494949");
+        public Color MaterialDesignBannerBackground { get; } = (Color)ColorConverter.ConvertFromString("#FFCDCDCD");
+        public Color MaterialDesignBannerMouseOver { get; } = (Color)ColorConverter.ConvertFromString("#FFB9B9BD");
+        public Color MaterialDesignBannerRipple { get; } = (Color)ColorConverter.ConvertFromString("#FF494949");
         public Color MaterialDesignTextFieldBoxBackground { get; } = (Color)ColorConverter.ConvertFromString("#1AFFFFFF");
         public Color MaterialDesignTextFieldBoxHoverBackground { get; } = (Color)ColorConverter.ConvertFromString("#1FFFFFFF");
         public Color MaterialDesignTextFieldBoxDisabledBackground { get; } = (Color)ColorConverter.ConvertFromString("#0DFFFFFF");

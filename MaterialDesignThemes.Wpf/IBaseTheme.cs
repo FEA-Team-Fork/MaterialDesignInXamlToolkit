@@ -24,6 +24,9 @@ namespace MaterialDesignThemes.Wpf
         Color MaterialDesignSnackbarBackground { get; }
         Color MaterialDesignSnackbarMouseOver { get; }
         Color MaterialDesignSnackbarRipple { get; }
+        Color MaterialDesignBannerBackground { get; }
+        Color MaterialDesignBannerMouseOver { get; }
+        Color MaterialDesignBannerRipple { get; }
         Color MaterialDesignTextFieldBoxBackground { get; }
         Color MaterialDesignTextFieldBoxHoverBackground { get; }
         Color MaterialDesignTextFieldBoxDisabledBackground { get; }

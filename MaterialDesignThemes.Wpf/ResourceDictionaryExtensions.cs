@@ -57,6 +57,9 @@ namespace MaterialDesignThemes.Wpf
             SetSolidColorBrush(resourceDictionary, "MaterialDesignSnackbarBackground", theme.SnackbarBackground);
             SetSolidColorBrush(resourceDictionary, "MaterialDesignSnackbarMouseOver", theme.SnackbarMouseOver);
             SetSolidColorBrush(resourceDictionary, "MaterialDesignSnackbarRipple", theme.SnackbarRipple);
+            SetSolidColorBrush(resourceDictionary, "MaterialDesignBannerBackground", theme.BannerBackground);
+            SetSolidColorBrush(resourceDictionary, "MaterialDesignBannerMouseOver", theme.BannerMouseOver);
+            SetSolidColorBrush(resourceDictionary, "MaterialDesignBannerRipple", theme.BannerRipple);
             SetSolidColorBrush(resourceDictionary, "MaterialDesignTextFieldBoxBackground", theme.TextFieldBoxBackground);
             SetSolidColorBrush(resourceDictionary, "MaterialDesignTextFieldBoxHoverBackground", theme.TextFieldBoxHoverBackground);
             SetSolidColorBrush(resourceDictionary, "MaterialDesignTextFieldBoxDisabledBackground", theme.TextFieldBoxDisabledBackground);
@@ -133,6 +136,9 @@ namespace MaterialDesignThemes.Wpf
                 SnackbarBackground = GetColor("MaterialDesignSnackbarBackground"),
                 SnackbarMouseOver = GetColor("MaterialDesignSnackbarMouseOver"),
                 SnackbarRipple = GetColor("MaterialDesignSnackbarRipple"),
+                BannerBackground = GetColor("MaterialDesignBannerBackground"),
+                BannerMouseOver = GetColor("MaterialDesignBannerMouseOver"),
+                BannerRipple = GetColor("MaterialDesignBannerRipple"),
                 TextFieldBoxBackground = GetColor("MaterialDesignTextFieldBoxBackground"),
                 TextFieldBoxHoverBackground = GetColor("MaterialDesignTextFieldBoxHoverBackground"),
                 TextFieldBoxDisabledBackground = GetColor("MaterialDesignTextFieldBoxDisabledBackground"),

@@ -70,6 +70,7 @@ namespace MaterialDesignThemes.Wpf
         private IInputElement _restoreFocusDialogClose;
         private IInputElement _restoreFocusWindowReactivation;
         private Action _currentSnackbarMessageQueueUnPauseAction;
+        private Action _currentBannerMessageQueueUnPauseAction;
         private Action _closeCleanUp = () => { };
 
         static DialogHost()
@@ -243,6 +244,7 @@ namespace MaterialDesignThemes.Wpf
             {
                 WatchWindowActivation(dialogHost);
                 dialogHost._currentSnackbarMessageQueueUnPauseAction = dialogHost.SnackbarMessageQueue?.Pause();
+                dialogHost._currentBannerMessageQueueUnPauseAction = dialogHost.BannerMessageQueue?.Pause();
             }
             else
             {
@@ -251,6 +253,11 @@ namespace MaterialDesignThemes.Wpf
                 {
                     dialogHost._currentSnackbarMessageQueueUnPauseAction();
                     dialogHost._currentSnackbarMessageQueueUnPauseAction = null;
+                }
+                if (dialogHost._currentBannerMessageQueueUnPauseAction != null)
+                {
+                    dialogHost._currentBannerMessageQueueUnPauseAction();
+                    dialogHost._currentBannerMessageQueueUnPauseAction = null;
                 }
                 dialogHost.CurrentSession.IsEnded = true;
                 dialogHost.CurrentSession = null;
@@ -414,6 +421,32 @@ namespace MaterialDesignThemes.Wpf
         {
             get { return (SnackbarMessageQueue)GetValue(SnackbarMessageQueueProperty); }
             set { SetValue(SnackbarMessageQueueProperty, value); }
+        }
+        
+        public static readonly DependencyProperty BannerMessageQueueProperty = DependencyProperty.Register(
+            "BannerMessageQueue", typeof(BannerMessageQueue), typeof(DialogHost), new PropertyMetadata(default(BannerMessageQueue), BannerMessageQueuePropertyChangedCallback));
+
+        private static void BannerMessageQueuePropertyChangedCallback(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs dependencyPropertyChangedEventArgs)
+        {
+            var dialogHost = (DialogHost)dependencyObject;
+            if (dialogHost._currentBannerMessageQueueUnPauseAction != null)
+            {
+                dialogHost._currentBannerMessageQueueUnPauseAction();
+                dialogHost._currentBannerMessageQueueUnPauseAction = null;
+            }
+
+            if (!dialogHost.IsOpen) return;
+            var bannerMessageQueue = dependencyPropertyChangedEventArgs.NewValue as BannerMessageQueue;
+            dialogHost._currentBannerMessageQueueUnPauseAction = bannerMessageQueue?.Pause();
+        }
+
+        /// <summary>
+        /// Allows association of a banner, so that notifications can be paused whilst a dialog is being displayed.
+        /// </summary>
+        public BannerMessageQueue BannerMessageQueue
+        {
+            get { return (BannerMessageQueue)GetValue(BannerMessageQueueProperty); }
+            set { SetValue(BannerMessageQueueProperty, value); }
         }
 
         public static readonly DependencyProperty DialogThemeProperty =

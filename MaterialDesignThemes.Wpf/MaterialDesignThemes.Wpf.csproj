@@ -153,6 +153,9 @@
     <Page Include="Themes\MaterialDesignTheme.Snackbar.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="Themes\MaterialDesignTheme.Banner.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Themes\MaterialDesignTheme.TextBlock.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>

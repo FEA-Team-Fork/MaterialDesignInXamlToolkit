@@ -48,6 +48,9 @@ namespace MaterialDesignThemes.Wpf
         public Color SnackbarBackground { get; set; }
         public Color SnackbarMouseOver { get; set; }
         public Color SnackbarRipple { get; set; }
+        public Color BannerBackground { get; set; }
+        public Color BannerMouseOver { get; set; }
+        public Color BannerRipple { get; set; }
         public Color TextBoxBorder { get; set; }
         public Color TextFieldBoxBackground { get; set; }
         public Color TextFieldBoxHoverBackground { get; set; }
