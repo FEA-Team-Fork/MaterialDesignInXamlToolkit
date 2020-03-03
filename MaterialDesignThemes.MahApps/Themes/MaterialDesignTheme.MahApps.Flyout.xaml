@@ -4,14 +4,14 @@
                     xmlns:mahShared="http://metro.mahapps.com/winfx/xaml/shared"
                     xmlns:mahApps="clr-namespace:MaterialDesignThemes.MahApps"
                     xmlns:wpf="clr-namespace:MaterialDesignThemes.Wpf;assembly=MaterialDesignThemes.Wpf"
-                    xmlns:i="http://schemas.microsoft.com/expression/2010/interactivity">
+                    xmlns:i="http://schemas.microsoft.com/xaml/behaviors">
 
     <DataTemplate x:Key="HeaderTemplate" x:Shared="False">
         <wpf:ColorZone x:Name="PART_ColorZone"
                        wpf:ShadowAssist.ShadowDepth="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=(mahApps:FlyoutAssist.HeaderShadowDepth)}"
                        Mode="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=(mahApps:FlyoutAssist.HeaderColorMode)}">
             <DockPanel x:Name="dpHeader"
-                       Margin="{Binding Path=(mah:ControlsHelper.HeaderMargin), RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type mah:Flyout}}, Mode=OneWay}"
+                       Margin="{Binding Path=(mah:HeaderedControlHelper.HeaderMargin), RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type mah:Flyout}}, Mode=OneWay}"
                        VerticalAlignment="Center"
                        LastChildFill="True">
                 <Button x:Name="PART_BackButton"
@@ -29,11 +29,10 @@
                             <mahShared:CloseFlyoutAction Command="{Binding RelativeSource={RelativeSource AncestorType={x:Type mah:Flyout}}, Path=CloseCommand, Mode=OneWay}" CommandParameter="{Binding RelativeSource={RelativeSource AncestorType={x:Type mah:Flyout}}, Path=CloseCommandParameter, Mode=OneWay}" />
                         </i:EventTrigger>
                     </i:Interaction.Triggers>
-                    <ContentControl Style="{DynamicResource PathIconContentControlStyle}"
-                                    Content="M8.59,16.58L13.17,12L8.59,7.41L10,6L16,12L10,18L8.59,16.58Z"
-                                    FlowDirection="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type mah:Flyout}}, Path=FlowDirection}"
-                                    Width="16"
-                                    Height="16" />
+                    <wpf:PackIcon Kind="ChevronRight"
+                                  FlowDirection="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type mah:Flyout}}, Path=FlowDirection}"
+                                  Width="{DynamicResource MahApps.Sizes.Font.FlyoutHeader}"
+                                  Height="{DynamicResource MahApps.Sizes.Font.FlyoutHeader}" />
                 </Button>
                 <ContentControl x:Name="PART_BackHeaderText"
                                 Margin="15 0 0 0"
@@ -92,11 +91,11 @@
                                                   ContentTemplate="{TemplateBinding HeaderTemplate}"
                                                   ContentTemplateSelector="{TemplateBinding HeaderTemplateSelector}"
                                                   DockPanel.Dock="Top"
-                                                  FontSize="{TemplateBinding mah:ControlsHelper.HeaderFontSize}"
-                                                  FontStretch="{TemplateBinding mah:ControlsHelper.HeaderFontStretch}"
-                                                  FontWeight="{TemplateBinding mah:ControlsHelper.HeaderFontWeight}"
-                                                  RecognizesAccessKey="True"
-                                                  SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                                                  FontFamily="{TemplateBinding mah:HeaderedControlHelper.HeaderFontFamily}"
+                                                  FontSize="{TemplateBinding mah:HeaderedControlHelper.HeaderFontSize}"
+                                                  FontStretch="{TemplateBinding mah:HeaderedControlHelper.HeaderFontStretch}"
+                                                  FontWeight="{TemplateBinding mah:HeaderedControlHelper.HeaderFontWeight}"
+                                                  SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
                     <ContentPresenter x:Name="PART_Content"
                                       ContentSource="Content"
                                       DockPanel.Dock="Bottom" />
@@ -238,8 +237,8 @@
         <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}" />
         <Setter Property="Background" Value="{DynamicResource MaterialDesignPaper}" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
-        <Setter Property="mah:ControlsHelper.HeaderFontSize" Value="{DynamicResource FlyoutHeaderFontSize}" />
-        <Setter Property="mah:ControlsHelper.HeaderMargin" Value="10" />
+        <Setter Property="mah:HeaderedControlHelper.HeaderFontSize" Value="{DynamicResource MahApps.Font.Size.Flyout.Header}" />
+        <Setter Property="mah:HeaderedControlHelper.HeaderMargin" Value="10" />
         <Setter Property="HeaderTemplate" Value="{StaticResource HeaderTemplate}" />
         <Setter Property="KeyboardNavigation.ControlTabNavigation" Value="Cycle" />
         <Setter Property="KeyboardNavigation.DirectionalNavigation" Value="Cycle" />
@@ -252,10 +251,10 @@
         <Setter Property="mahApps:FlyoutAssist.HeaderShadowDepth" Value="Depth2" />
         <Style.Triggers>
             <Trigger Property="Position" Value="Right">
-                <Setter Property="mah:ControlsHelper.HeaderMargin" Value="10 25 10 10" />
+                <Setter Property="mah:HeaderedControlHelper.HeaderMargin" Value="10 25 10 10" />
             </Trigger>
             <Trigger Property="Position" Value="Left">
-                <Setter Property="mah:ControlsHelper.HeaderMargin" Value="10 25 10 10" />
+                <Setter Property="mah:HeaderedControlHelper.HeaderMargin" Value="10 25 10 10" />
             </Trigger>
             <Trigger Property="TitleVisibility" Value="Collapsed">
                 <Setter Property="mahApps:FlyoutAssist.HeaderColorMode" Value="Standard" />
