@@ -234,7 +234,12 @@ namespace MaterialDesignThemes.Wpf
             if (popupBox.PopupMode == PopupBoxPopupMode.Click)
             {
                 if (newValue)
-                    Mouse.Capture(popupBox, CaptureMode.SubTree);
+                {
+                    if (popupBox.StaysOpen)
+                        Mouse.Capture(popupBox, CaptureMode.SubTree);
+                    else
+                        Mouse.Capture(popupBox, CaptureMode.None);
+                }
                 else
                     Mouse.Capture(null);
             }
