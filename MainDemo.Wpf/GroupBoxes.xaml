@@ -59,13 +59,19 @@
                     <DataTemplate>
                         <StackPanel Orientation="Horizontal">
                             <materialDesign:PackIcon Kind="ImageArea" Height="32" Width="32" VerticalAlignment="Center" />
-                            <TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Style="{StaticResource MaterialDesignSubheadingTextBlock}" Text="{Binding}"/>
+                            <TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Style="{StaticResource MaterialDesignSubtitle1TextBlock}" Text="{Binding}"/>
                         </StackPanel>
                     </DataTemplate>
                 </GroupBox.HeaderTemplate>
                 <Image Source="Resources/Contact.png" VerticalAlignment="Center" HorizontalAlignment="Center" />
             </GroupBox>
         </smtx:XamlDisplay>
+
+            <smtx:XamlDisplay Key="groupbox_6" Grid.Column="2" Grid.Row="1">
+            <GroupBox Header="Custom Header" Style="{DynamicResource MaterialDesignGroupBox}" Margin="16" materialDesign:ColorZoneAssist.Mode="Custom" materialDesign:ColorZoneAssist.Background="Black" materialDesign:ColorZoneAssist.Foreground="White">
+                    <TextBlock>My Content</TextBlock>
+                </GroupBox>
+            </smtx:XamlDisplay>
     </Grid>
 </UserControl>
 

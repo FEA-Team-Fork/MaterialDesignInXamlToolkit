@@ -60,6 +60,9 @@ namespace MaterialDesignThemes.Wpf
             theme.SnackbarBackground = baseTheme.MaterialDesignSnackbarBackground;
             theme.SnackbarMouseOver = baseTheme.MaterialDesignSnackbarMouseOver;
             theme.SnackbarRipple = baseTheme.MaterialDesignSnackbarRipple;
+            theme.BannerBackground = baseTheme.MaterialDesignBannerBackground;
+            theme.BannerMouseOver = baseTheme.MaterialDesignBannerMouseOver;
+            theme.BannerRipple = baseTheme.MaterialDesignBannerRipple;
             theme.TextBoxBorder = baseTheme.MaterialDesignTextBoxBorder;
             theme.TextFieldBoxBackground = baseTheme.MaterialDesignTextFieldBoxBackground;
             theme.TextFieldBoxHoverBackground = baseTheme.MaterialDesignTextFieldBoxHoverBackground;

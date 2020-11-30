@@ -1,30 +1,22 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFrameworks>net472;netcoreapp3.0</TargetFrameworks>
+    <TargetFrameworks>net472;netcoreapp3.1</TargetFrameworks>
     <ProjectTypeGuids>{60dc8134-eba5-43b8-bcc9-bb4bc16c2548};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <AssemblyTitle>MaterialDesignColors.WpfExample</AssemblyTitle>
     <Product>MaterialDesignColors.WpfExample</Product>
-    <Copyright>Copyright ©  2015</Copyright>
+    <Copyright>Copyright © 2020</Copyright>
     <ExtrasEnableWpfProjectSetup>true</ExtrasEnableWpfProjectSetup>
-    <Configurations>Debug;Release;AppVeyor</Configurations>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(TargetFramework)'=='netcoreapp3.0'">
-    <UseWPF>true</UseWPF>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'AppVeyor|AnyCPU'">
-    <OutputPath>bin\AppVeyor\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <Optimize>true</Optimize>
-    <DebugType>pdbonly</DebugType>
+    <Configurations>Debug;Release</Configurations>
     <ErrorReport>prompt</ErrorReport>
-    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
     <Prefer32Bit>true</Prefer32Bit>
-  </PropertyGroup>
-  <PropertyGroup>
     <ApplicationIcon>favicon.ico</ApplicationIcon>
+    <LangVersion>8.0</LangVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(TargetFramework)'=='netcoreapp3.1'">
+    <UseWPF>true</UseWPF>
   </PropertyGroup>
   <Import Project="..\packages\ShowMeTheXAML.MSBuild\build\ShowMeTheXAML.MSBuild.targets" Label="Paket" />
   <Target Name="ShowMeTheXAML_EnsureXamlCreated" AfterTargets="BeforeCompile">
@@ -237,33 +229,14 @@
     <ProjectReference Include="..\MaterialDesignThemes.Wpf\MaterialDesignThemes.Wpf.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="Resources\ProfilePic.jpg" />
+    <Resource Include="Resources\*.jpg" />
+    <Resource Include="Resources\*.png" />
   </ItemGroup>
   <ItemGroup>
     <Resource Include="ScreenGrabFromGoogle.gif" />
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="Resources\Chartridge046_small.jpg" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Resources\ms-icon-310x310.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Resources\Contact.png" />
-  </ItemGroup>
-  <ItemGroup>
     <Resource Include="favicon.ico" />
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Remove="obj\AppVeyor\GeneratedInternalTypeHelper.g.cs" />
-    <Compile Remove="obj\AppVeyor\Lists.g.cs" />
-    <Compile Remove="obj\AppVeyor\Palette.g.cs" />
-    <Compile Remove="obj\AppVeyor\ShowMeTheXaml_XamlDictionary.g.cs" />
-    <Compile Remove="obj\AppVeyor\Sliders.g.cs" />
-    <Compile Remove="obj\AppVeyor\Transitions.g.cs" />
-    <Compile Remove="obj\AppVeyor\Typography.g.cs" />
-    <Compile Remove="obj\AppVeyor\Domain\SampleProgressDialog.g.cs" />
-    <Compile Remove="obj\AppVeyor\TransitionsDemo\Slide8_Details.g.cs" />
   </ItemGroup>
   <Import Project="..\.paket\Paket.Restore.targets" />
 </Project>

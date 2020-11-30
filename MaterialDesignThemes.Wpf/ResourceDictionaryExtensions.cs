@@ -57,6 +57,9 @@ namespace MaterialDesignThemes.Wpf
             SetSolidColorBrush(resourceDictionary, "MaterialDesignSnackbarBackground", theme.SnackbarBackground);
             SetSolidColorBrush(resourceDictionary, "MaterialDesignSnackbarMouseOver", theme.SnackbarMouseOver);
             SetSolidColorBrush(resourceDictionary, "MaterialDesignSnackbarRipple", theme.SnackbarRipple);
+            SetSolidColorBrush(resourceDictionary, "MaterialDesignBannerBackground", theme.BannerBackground);
+            SetSolidColorBrush(resourceDictionary, "MaterialDesignBannerMouseOver", theme.BannerMouseOver);
+            SetSolidColorBrush(resourceDictionary, "MaterialDesignBannerRipple", theme.BannerRipple);
             SetSolidColorBrush(resourceDictionary, "MaterialDesignTextFieldBoxBackground", theme.TextFieldBoxBackground);
             SetSolidColorBrush(resourceDictionary, "MaterialDesignTextFieldBoxHoverBackground", theme.TextFieldBoxHoverBackground);
             SetSolidColorBrush(resourceDictionary, "MaterialDesignTextFieldBoxDisabledBackground", theme.TextFieldBoxDisabledBackground);
@@ -65,12 +68,12 @@ namespace MaterialDesignThemes.Wpf
 
             if (!(resourceDictionary.GetThemeManager() is ThemeManager themeManager))
             {
-                resourceDictionary[ThemeManagerKey] = themeManager = new ThemeManager();
+                resourceDictionary[ThemeManagerKey] = themeManager = new ThemeManager(resourceDictionary);
             }
             ITheme oldTheme = resourceDictionary.GetTheme();
             resourceDictionary[CurrentThemeKey] = theme;
 
-            themeManager.OnThemeChange(resourceDictionary, oldTheme, theme);
+            themeManager.OnThemeChange(oldTheme, theme);
         }
 
         public static ITheme GetTheme(this ResourceDictionary resourceDictionary)
@@ -133,6 +136,9 @@ namespace MaterialDesignThemes.Wpf
                 SnackbarBackground = GetColor("MaterialDesignSnackbarBackground"),
                 SnackbarMouseOver = GetColor("MaterialDesignSnackbarMouseOver"),
                 SnackbarRipple = GetColor("MaterialDesignSnackbarRipple"),
+                BannerBackground = GetColor("MaterialDesignBannerBackground"),
+                BannerMouseOver = GetColor("MaterialDesignBannerMouseOver"),
+                BannerRipple = GetColor("MaterialDesignBannerRipple"),
                 TextFieldBoxBackground = GetColor("MaterialDesignTextFieldBoxBackground"),
                 TextFieldBoxHoverBackground = GetColor("MaterialDesignTextFieldBoxHoverBackground"),
                 TextFieldBoxDisabledBackground = GetColor("MaterialDesignTextFieldBoxDisabledBackground"),
@@ -200,11 +206,18 @@ namespace MaterialDesignThemes.Wpf
 
         private class ThemeManager : IThemeManager
         {
+            private ResourceDictionary _ResourceDictionary;
+
+            public ThemeManager(ResourceDictionary resourceDictionary)
+            {
+                _ResourceDictionary = resourceDictionary ?? throw new ArgumentNullException(nameof(resourceDictionary));
+            }
+
             public event EventHandler<ThemeChangedEventArgs> ThemeChanged;
 
-            public void OnThemeChange(ResourceDictionary resourceDictionary, ITheme oldTheme, ITheme newTheme)
+            public void OnThemeChange(ITheme oldTheme, ITheme newTheme)
             {
-                ThemeChanged?.Invoke(this, new ThemeChangedEventArgs(resourceDictionary, oldTheme, newTheme));
+                ThemeChanged?.Invoke(this, new ThemeChangedEventArgs(_ResourceDictionary, oldTheme, newTheme));
             }
         }
     }

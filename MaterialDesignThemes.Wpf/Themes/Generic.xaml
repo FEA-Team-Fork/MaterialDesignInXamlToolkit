@@ -27,6 +27,7 @@
         <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Shadows.xaml" />
         <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.SmartHint.xaml" />
         <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Snackbar.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Banner.xaml" />
     </ResourceDictionary.MergedDictionaries>
 
     <!-- set up default styles for our custom Material Design in XAML Toolkit controls -->
@@ -191,7 +192,8 @@
     </Style>
 
     <Style TargetType="{x:Type local:Underline}">
-        <Setter Property="Background" Value="{DynamicResource PrimaryHueMidBrush}"/>
+        <Setter Property="local:TextFieldAssist.UnderlineBrush" Value="{DynamicResource PrimaryHueMidBrush}"/>
+        <Setter Property="Background" Value="{Binding Path=(local:TextFieldAssist.UnderlineBrush), RelativeSource={RelativeSource Self}}"/>
         <Setter Property="SnapsToDevicePixels" Value="True"/>
         <Setter Property="HorizontalAlignment" Value="Stretch"/>
         <Setter Property="VerticalAlignment" Value="Bottom"/>
@@ -488,6 +490,10 @@
             <Trigger Property="Mode" Value="Dark">
                 <Setter Property="Background" Value="{DynamicResource MaterialDesignDarkBackground}" />
                 <Setter Property="Foreground" Value="{DynamicResource MaterialDesignDarkForeground}" />
+            </Trigger>
+            <Trigger Property="Mode" Value="Custom">
+                <Setter Property="Background" Value="{Binding RelativeSource={RelativeSource Self}, Path=(local:ColorZoneAssist.Background)}" />
+                <Setter Property="Foreground" Value="{Binding RelativeSource={RelativeSource Self}, Path=(local:ColorZoneAssist.Foreground)}" />
             </Trigger>
         </Style.Triggers>
     </Style>
