@@ -1,11 +1,25 @@
 ﻿using System;
 using System.Linq;
 using System.Windows;
+using System.Windows.Media;
 
 namespace MaterialDesignThemes.Wpf
 {
     public static class ThemeAssist
     {
+        internal static Brush GetTriggerColor(DependencyObject obj)
+        {
+            return (Brush)obj.GetValue(TriggerBrushProperty);
+        }
+
+        internal static void SetTriggerBrush(DependencyObject obj, Brush value)
+        {
+            obj.SetValue(TriggerBrushProperty, value);
+        }
+
+        internal static readonly DependencyProperty TriggerBrushProperty =
+            DependencyProperty.RegisterAttached("TriggerBrush", typeof(Brush), typeof(ThemeAssist), new PropertyMetadata(null));
+
         public static BaseTheme GetTheme(DependencyObject obj)
         {
             return (BaseTheme)obj.GetValue(ThemeProperty);
@@ -23,8 +37,8 @@ namespace MaterialDesignThemes.Wpf
         {
             if (resourceDictionary == null) throw new ArgumentNullException(nameof(resourceDictionary));
 
-            string lightSource = GetResourceDictionarySource(BaseTheme.Light);
-            string darkSource = GetResourceDictionarySource(BaseTheme.Dark);
+            string? lightSource = GetResourceDictionarySource(BaseTheme.Light);
+            string? darkSource = GetResourceDictionarySource(BaseTheme.Dark);
 
             foreach (ResourceDictionary mergedDictionary in resourceDictionary.MergedDictionaries.ToList())
             {
@@ -32,7 +46,7 @@ namespace MaterialDesignThemes.Wpf
                 {
                     resourceDictionary.MergedDictionaries.Remove(mergedDictionary);
                 }
-                if (string.Equals(mergedDictionary.Source?.ToString(), darkSource, StringComparison.OrdinalIgnoreCase))
+                else if (string.Equals(mergedDictionary.Source?.ToString(), darkSource, StringComparison.OrdinalIgnoreCase))
                 {
                     resourceDictionary.MergedDictionaries.Remove(mergedDictionary);
                 }
@@ -52,16 +66,14 @@ namespace MaterialDesignThemes.Wpf
             }
         }
 
-        private static string GetResourceDictionarySource(BaseTheme theme)
+        private static string? GetResourceDictionarySource(BaseTheme theme)
         {
-            switch (theme)
+            return theme switch
             {
-                case BaseTheme.Light:
-                    return "pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Light.xaml";
-                case BaseTheme.Dark:
-                    return "pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Dark.xaml";
-            }
-            return null;
+                BaseTheme.Light => "pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Light.xaml",
+                BaseTheme.Dark => "pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Dark.xaml",
+                _ => null,
+            };
         }
     }
 }

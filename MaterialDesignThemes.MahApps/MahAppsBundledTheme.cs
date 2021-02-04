@@ -1,11 +1,10 @@
 ﻿using System;
 using System.Linq;
 using System.Windows;
-using System.Windows.Media;
-using MahApps.Metro;
+using ControlzEx.Theming;
 using MaterialDesignColors;
-using MaterialDesignColors.ColorManipulation;
 using MaterialDesignThemes.Wpf;
+using Theme = ControlzEx.Theming.Theme;
 
 namespace MaterialDesignThemes.MahApps
 {
@@ -16,7 +15,7 @@ namespace MaterialDesignThemes.MahApps
         protected override void ApplyTheme(ITheme theme)
         {
             base.ApplyTheme(theme);
-            if (TryGetResourceDictionaries(theme, out ResourceDictionary light, out ResourceDictionary dark))
+            if (TryGetResourceDictionaries(theme, out ResourceDictionary? light, out ResourceDictionary? dark))
             {
                 switch (BaseTheme)
                 {
@@ -26,21 +25,31 @@ namespace MaterialDesignThemes.MahApps
                     case Wpf.BaseTheme.Dark:
                         MergedDictionaries.Add(dark);
                         break;
+                    case Wpf.BaseTheme.Inherit:
+                        switch(Wpf.Theme.GetSystemTheme())
+                        {
+                            case Wpf.BaseTheme.Dark:
+                                MergedDictionaries.Add(dark);
+                                break;
+                            default:
+                                MergedDictionaries.Add(light);
+                                break;
+                        }
+                        break;
                 }
 
-                IThemeManager themeManager = this.GetThemeManager();
-                if (themeManager != null)
+                if (this.GetThemeManager() is IThemeManager themeManager)
                 {
                     themeManager.ThemeChanged += ThemeManagerOnThemeChanged;
                 }
             }
         }
 
-        private bool TryGetResourceDictionaries(ITheme theme, out ResourceDictionary light, out ResourceDictionary dark)
+        private bool TryGetResourceDictionaries(ITheme theme, out ResourceDictionary? light, out ResourceDictionary? dark)
         {
             if (PrimaryColor is PrimaryColor primaryColor &&
                 SecondaryColor is SecondaryColor secondaryColor &&
-                BaseTheme is BaseTheme baseTheme)
+                BaseTheme is BaseTheme)
             {
                 light = GetResourceDictionary(theme, primaryColor, secondaryColor, Wpf.BaseTheme.Light);
                 dark = GetResourceDictionary(theme, primaryColor, secondaryColor, Wpf.BaseTheme.Dark);
@@ -57,9 +66,8 @@ namespace MaterialDesignThemes.MahApps
             {
                 string baseColorScheme = baseTheme.GetMahAppsBaseColorScheme();
                 string colorScheme = $"MaterialDesign.{primaryColor}.{secondaryColor}";
-
                 ResourceDictionary rv;
-                if (ThemeManager.Themes.FirstOrDefault(x => x.BaseColorScheme == baseColorScheme && x.ColorScheme == colorScheme) is global::MahApps.Metro.Theme mahAppsTheme)
+                if (ThemeManager.Current.Themes.FirstOrDefault(x => x.BaseColorScheme == baseColorScheme && x.ColorScheme == primaryColor.ToString()) is Theme mahAppsTheme)
                 {
                     rv = mahAppsTheme.Resources;
                     rv.SetMahApps(theme, baseTheme);
@@ -70,26 +78,29 @@ namespace MaterialDesignThemes.MahApps
                 rv[GeneratedKey] = GeneratedKey;
                 rv.SetMahApps(theme, baseTheme);
 
-                rv["Theme.Name"] = $"MaterialDesign.{baseColorScheme}.{primaryColor}.{secondaryColor}";
-                rv["Theme.DisplayName"] = $"Material Design {primaryColor} with {secondaryColor}";
-                rv["Theme.ColorScheme"] = colorScheme;
-                ThemeManager.AddTheme(rv);
+                string themeName = $"MaterialDesign.{primaryColor}.{secondaryColor}.{baseColorScheme}";
+                string displayName = $"Material Design {primaryColor} with {secondaryColor}";
+                rv[Theme.ThemeNameKey] = themeName;
+                rv[Theme.ThemeDisplayNameKey] = displayName;
+                rv[Theme.ThemeColorSchemeKey] = colorScheme;
+                rv[Theme.ThemeBaseColorSchemeKey] = baseColorScheme;
+                var themeInstance = new Theme(new LibraryTheme(rv, null));
+                rv[Theme.ThemeInstanceKey] = themeInstance;
+                ThemeManager.Current.AddTheme(themeInstance);
 
                 return rv;
             }
         }
 
-        private void ThemeManagerOnThemeChanged(object sender, ThemeChangedEventArgs e)
+        private void ThemeManagerOnThemeChanged(object? sender, Wpf.ThemeChangedEventArgs e)
         {
             ResourceDictionary resourceDictionary = e.ResourceDictionary;
 
             ITheme newTheme = e.NewTheme;
 
-            var foreground = newTheme.Background.ContrastingForegroundColor();
+            BaseTheme baseTheme = newTheme.GetBaseTheme();
 
-            BaseTheme baseTheme = foreground == Colors.Black ? Wpf.BaseTheme.Light : Wpf.BaseTheme.Dark;
-
-            if (TryGetResourceDictionaries(newTheme, out ResourceDictionary light, out ResourceDictionary dark))
+            if (TryGetResourceDictionaries(newTheme, out ResourceDictionary? light, out ResourceDictionary? dark))
             {
                 for (int i = resourceDictionary.MergedDictionaries.Count - 1; i >= 0; i--)
                 {

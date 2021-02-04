@@ -5,20 +5,14 @@ namespace MaterialDesignThemes.Wpf
 {
     public class DialogClosingEventArgs : RoutedEventArgs
     {
-        public DialogClosingEventArgs(DialogSession session, object parameter, RoutedEvent routedEvent) : base(routedEvent)
-        {
-            Session = session ?? throw new ArgumentNullException(nameof(session));
-
-            Parameter = parameter;
-        }
+        public DialogClosingEventArgs(DialogSession session, RoutedEvent routedEvent)
+            : base(routedEvent)
+            => Session = session ?? throw new ArgumentNullException(nameof(session));
 
         /// <summary>
         /// Cancel the close.
         /// </summary>
-        public void Cancel()
-        {
-            IsCancelled = true;
-        }
+        public void Cancel() => IsCancelled = true;
 
         /// <summary>
         /// Indicates if the close has already been cancelled.
@@ -28,7 +22,7 @@ namespace MaterialDesignThemes.Wpf
         /// <summary>
         /// Gets the parameter originally provided to <see cref="DialogHost.CloseDialogCommand"/>/
         /// </summary>
-        public object Parameter { get; }
+        public object? Parameter => Session.CloseParameter;
 
         /// <summary>
         /// Allows interaction with the current dialog session.

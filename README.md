@@ -72,6 +72,8 @@ To load the source project you will need Visual Studio 2019. Don't worry if you 
 
 ![Alt text](web/images/screen-fields.png "Fields")
 
+![Alt text](web/images/screen-comboboxes.png "ComboBoxes")
+
 ![Alt text](web/images/screen-palette.png "Palette")
 
 ![Alt text](web/images/screen-colortools.png "Color Tools")
@@ -99,6 +101,8 @@ To load the source project you will need Visual Studio 2019. Don't worry if you 
 ![Alt text](web/images/screen-typography.png "Typography")
 
 ![Alt text](web/images/screen-groupbox.png "Group Box")
+
+![Alt text](web/images/screen-snackbars.png "Snackbars")
 
 ![Alt text](web/images/screen-shadows.png "Shadows")
 

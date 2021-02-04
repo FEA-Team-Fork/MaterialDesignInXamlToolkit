@@ -11,8 +11,6 @@ namespace MaterialDesignThemes.Wpf
         {
             private readonly RichTextBox _richTextBox;
 
-            public object Content => null;
-
             public bool IsLoaded => _richTextBox.IsLoaded;
 
             public bool IsVisible => _richTextBox.IsVisible;
@@ -24,15 +22,16 @@ namespace MaterialDesignThemes.Wpf
                     _richTextBox.Document.ContentEnd
                 );
 
-                return string.IsNullOrWhiteSpace(textRange.Text);
+                return string.IsNullOrEmpty(textRange.Text) || 
+                    textRange.Text == Environment.NewLine;
             }
 
             public bool IsFocused() => _richTextBox.IsKeyboardFocused;
 
-            public event EventHandler ContentChanged;
-            public event EventHandler IsVisibleChanged;
-            public event EventHandler Loaded;
-            public event EventHandler FocusedChanged;
+            public event EventHandler? ContentChanged;
+            public event EventHandler? IsVisibleChanged;
+            public event EventHandler? Loaded;
+            public event EventHandler? FocusedChanged;
 
             public RichTextBoxHintProxy(RichTextBox textBox)
             {

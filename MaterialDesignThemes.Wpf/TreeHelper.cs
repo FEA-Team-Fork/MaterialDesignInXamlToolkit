@@ -6,14 +6,16 @@ namespace MaterialDesignThemes.Wpf
 {
     internal static class TreeHelper
     {
-        public static double GetVisibleWidth(FrameworkElement element, UIElement parent)
+        public static double GetVisibleWidth(FrameworkElement element, FrameworkElement parent, FlowDirection flowDirection)
         {
             if (element == null) throw new ArgumentNullException(nameof(element));
             if (parent == null) throw new ArgumentNullException(nameof(parent));
 
             var location = element.TransformToAncestor(parent).Transform(new Point(0, 0));
+            if (flowDirection != parent.FlowDirection)
+                location.X -= element.ActualWidth;
 
-            int width = (int) Math.Floor(element.ActualWidth);
+            int width = (int)Math.Floor(element.ActualWidth);
             var hitTest = parent.InputHitTest(new Point(location.X + width, location.Y));
 
             if (IsAncestorTill(hitTest as FrameworkElement, element, parent))
@@ -22,12 +24,12 @@ namespace MaterialDesignThemes.Wpf
             }
 
             //BinarySearch here
-            int end = (int) Math.Floor(element.ActualWidth);
+            int end = (int)Math.Floor(element.ActualWidth);
             int start = 0;
 
             while (start < end)
             {
-                width = (end + start)/2;
+                width = (end + start) / 2;
                 hitTest = parent.InputHitTest(new Point(location.X + width, location.Y));
 
                 if (IsAncestorTill(hitTest as FrameworkElement, element, parent))
@@ -66,11 +68,11 @@ namespace MaterialDesignThemes.Wpf
             return element.ActualWidth;
         }
 
-        private static bool IsAncestorTill(FrameworkElement element, object ancestor, object container)
+        private static bool IsAncestorTill(FrameworkElement? element, object ancestor, object container)
         {
-            if (element == null) return false;
+            if (element is null) return false;
 
-            FrameworkElement parent = element;
+            FrameworkElement? parent = element;
 
             do
             {
@@ -81,10 +83,10 @@ namespace MaterialDesignThemes.Wpf
             return false;
         }
 
-        public static Visual FindMainTreeVisual(Visual visual)
+        public static Visual? FindMainTreeVisual(Visual? visual)
         {
-            DependencyObject root = null;
-            DependencyObject dependencyObject = visual;
+            DependencyObject? root = null;
+            DependencyObject? dependencyObject = visual;
 
             while (dependencyObject != null)
             {

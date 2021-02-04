@@ -9,7 +9,7 @@ namespace MaterialDesignThemes.Wpf.Converters
 {
     public class ShadowEdgeConverter : IMultiValueConverter
     {
-        public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+        public object? Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
         {
             if (values?.Length != 4)
             {
@@ -28,10 +28,10 @@ namespace MaterialDesignThemes.Wpf.Converters
             {
                 return Binding.DoNothing;
             }
-            DropShadowEffect dropShadow = ShadowInfo.GetDropShadow((ShadowDepth)values[2]);
-            if (dropShadow == null)
+            DropShadowEffect? dropShadow = ShadowInfo.GetDropShadow((ShadowDepth)values[2]);
+            if (dropShadow is null)
             {
-                return Binding.DoNothing;
+                return null;
             }
 
             ShadowEdges edges = (ShadowEdges)values[3];
@@ -69,8 +69,6 @@ namespace MaterialDesignThemes.Wpf.Converters
         }
 
         public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
-        {
-            throw new NotImplementedException();
-        }
+            => throw new NotImplementedException();
     }
 }
