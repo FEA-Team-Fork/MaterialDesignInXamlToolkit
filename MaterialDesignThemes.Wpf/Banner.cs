@@ -7,6 +7,13 @@ using System.Windows.Threading;
 
 namespace MaterialDesignThemes.Wpf
 {
+    public enum BannerActionButtonPlacementMode
+    {
+        Auto,
+        Inline,
+        SeparateLine
+    }
+
     /// <summary>
     /// Implements a <see cref="Banner"/> inspired by the Material Design specs (https://material.io/components/banners/).
     /// </summary>
@@ -16,7 +23,7 @@ namespace MaterialDesignThemes.Wpf
         private const string ActivateStoryboardName = "ActivateStoryboard";
         private const string DeactivateStoryboardName = "DeactivateStoryboard";
 
-        private Action _messageQueueRegistrationCleanUp = null;
+        private Action? _messageQueueRegistrationCleanUp = null;
 
         static Banner()
         {
@@ -26,27 +33,35 @@ namespace MaterialDesignThemes.Wpf
         public static readonly DependencyProperty MessageProperty = DependencyProperty.Register(
             nameof(Message), typeof(BannerMessage), typeof(Banner), new PropertyMetadata(default(BannerMessage)));
 
-        public BannerMessage Message
+        public BannerMessage? Message
         {
-            get { return (BannerMessage) GetValue(MessageProperty); }
+            get { return (BannerMessage?) GetValue(MessageProperty); }
             set { SetValue(MessageProperty, value); }
         }
 
         public static readonly DependencyProperty MessageQueueProperty = DependencyProperty.Register(
-            nameof(MessageQueue), typeof(BannerMessageQueue), typeof(Banner), new PropertyMetadata(default(BannerMessageQueue), MessageQueuePropertyChangedCallback));
+            nameof(MessageQueue), typeof(BannerMessageQueue), typeof(Banner), new PropertyMetadata(default(BannerMessageQueue), MessageQueuePropertyChangedCallback),
+            MessageQueueValidateValueCallback);
 
         private static void MessageQueuePropertyChangedCallback(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs dependencyPropertyChangedEventArgs)
         {
             var banner = (Banner) dependencyObject;
-            (banner._messageQueueRegistrationCleanUp ?? (() => { }))();            
+            banner._messageQueueRegistrationCleanUp?.Invoke();
             var messageQueue = dependencyPropertyChangedEventArgs.NewValue as BannerMessageQueue;
             banner._messageQueueRegistrationCleanUp = messageQueue?.Pair(banner);
         }
 
-        public BannerMessageQueue MessageQueue
+		private static bool MessageQueueValidateValueCallback(object value)
         {
-            get { return (BannerMessageQueue) GetValue(MessageQueueProperty); }
-            set { SetValue(MessageQueueProperty, value); }
+            if (value is null || ((BannerMessageQueue)value).Dispatcher == Dispatcher.CurrentDispatcher)
+                return true;
+            throw new ArgumentException("BannerMessageQueue must be created by the same thread.", nameof(value));
+        }
+
+		public BannerMessageQueue? MessageQueue
+        {
+            get => (BannerMessageQueue?) GetValue(MessageQueueProperty);
+            set => SetValue(MessageQueueProperty, value);
         }
 
         public static readonly DependencyProperty IsActiveProperty = DependencyProperty.Register(
@@ -54,48 +69,39 @@ namespace MaterialDesignThemes.Wpf
 
         public bool IsActive
         {
-            get { return (bool) GetValue(IsActiveProperty); }
-            set { SetValue(IsActiveProperty, value); }
+            get => (bool) GetValue(IsActiveProperty);
+            set => SetValue(IsActiveProperty, value);
         }
 
         public event RoutedPropertyChangedEventHandler<bool> IsActiveChanged
         {
-            add { AddHandler(IsActiveChangedEvent, value); }
-            remove { RemoveHandler(IsActiveChangedEvent, value); }
+            add => AddHandler(IsActiveChangedEvent, value);
+            remove => RemoveHandler(IsActiveChangedEvent, value);
         }
 
-        public static readonly RoutedEvent IsActiveChangedEvent =
-            EventManager.RegisterRoutedEvent(
-                nameof(IsActiveChanged),
-                RoutingStrategy.Bubble,
-                typeof(RoutedPropertyChangedEventHandler<bool>),
-                typeof(Banner));
+        public static readonly RoutedEvent IsActiveChangedEvent = EventManager.RegisterRoutedEvent(
+            nameof(IsActiveChanged), RoutingStrategy.Bubble, typeof(RoutedPropertyChangedEventHandler<bool>), typeof(Banner));
 
-        private static void OnIsActiveChanged(
-            DependencyObject d, DependencyPropertyChangedEventArgs e)
+        private static void OnIsActiveChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             var instance = d as Banner;
-            var args = new RoutedPropertyChangedEventArgs<bool>(
-                (bool) e.OldValue,
-                (bool) e.NewValue) {RoutedEvent = IsActiveChangedEvent };
+            var args = new RoutedPropertyChangedEventArgs<bool>((bool) e.OldValue, (bool) e.NewValue)
+            {
+                RoutedEvent = IsActiveChangedEvent
+            };
             instance?.RaiseEvent(args);
-        }        
+        }
 
-        public static readonly RoutedEvent DeactivateStoryboardCompletedEvent =
-            EventManager.RegisterRoutedEvent(
-                nameof(DeactivateStoryboardCompleted),
-                RoutingStrategy.Bubble,
-                typeof(BannerMessageEventArgs),
-                typeof(Banner));
+        public static readonly RoutedEvent DeactivateStoryboardCompletedEvent = EventManager.RegisterRoutedEvent(
+            nameof(DeactivateStoryboardCompleted), RoutingStrategy.Bubble, typeof(BannerMessageEventArgs), typeof(Banner));
 
         public event RoutedPropertyChangedEventHandler<BannerMessage> DeactivateStoryboardCompleted
         {
-            add { AddHandler(DeactivateStoryboardCompletedEvent, value); }
-            remove { RemoveHandler(DeactivateStoryboardCompletedEvent, value); }
+            add => AddHandler(DeactivateStoryboardCompletedEvent, value);
+            remove => RemoveHandler(DeactivateStoryboardCompletedEvent, value);
         }
 
-        private static void OnDeactivateStoryboardCompleted(
-            IInputElement banner, BannerMessage message)
+        private static void OnDeactivateStoryboardCompleted(IInputElement banner, BannerMessage message)
         {
             var args = new BannerMessageEventArgs(DeactivateStoryboardCompletedEvent, message);
             banner.RaiseEvent(args);
@@ -108,10 +114,10 @@ namespace MaterialDesignThemes.Wpf
         public static readonly DependencyProperty ActionButtonStyleProperty = DependencyProperty.Register(
             nameof(ActionButtonStyle), typeof(Style), typeof(Banner), new PropertyMetadata(default(Style)));
 
-        public Style ActionButtonStyle
+        public Style? ActionButtonStyle
         {
-            get { return (Style) GetValue(ActionButtonStyleProperty); }
-            set { SetValue(ActionButtonStyleProperty, value); }
+            get => (Style?) GetValue(ActionButtonStyleProperty);
+            set => SetValue(ActionButtonStyleProperty, value);
         }
 
         public override void OnApplyTemplate()
@@ -120,21 +126,21 @@ namespace MaterialDesignThemes.Wpf
             //we either build a storyboard in code and subscribe to completed event, 
             //or take the not 100% proof of the storyboard duration from the storyboard itself
             //...HOWEVER...we can both methods result can work under the same public API so 
-            //we can flip the implementation if this version doesnt pan out
+            //we can flip the implementation if this version does not pan out
 
             //(currently we have no even on the activate animation; don't 
             // need it just now, but it would mirror the deactivate)
 
             ActivateStoryboardDuration = GetStoryboardResourceDuration(ActivateStoryboardName);
             DeactivateStoryboardDuration = GetStoryboardResourceDuration(DeactivateStoryboardName);
-            
+
             base.OnApplyTemplate();
-        }        
+        }
 
         private TimeSpan GetStoryboardResourceDuration(string resourceName)
         {
             var storyboard = Template.Resources.Contains(resourceName)
-                ? (Storyboard)Template.Resources[resourceName]
+                ? (Storyboard) Template.Resources[resourceName]
                 : null;
 
             return storyboard != null && storyboard.Duration.HasTimeSpan
@@ -151,10 +157,10 @@ namespace MaterialDesignThemes.Wpf
         {
             OnIsActiveChanged(dependencyObject, dependencyPropertyChangedEventArgs);
 
-            if ((bool)dependencyPropertyChangedEventArgs.NewValue) return;
+            if ((bool) dependencyPropertyChangedEventArgs.NewValue) return;
 
-            var banner = (Banner)dependencyObject;
-            if (banner.Message == null) return;
+            var banner = (Banner) dependencyObject;
+            if (banner.Message is null) return;
 
             var dispatcherTimer = new DispatcherTimer
             {
@@ -162,16 +168,27 @@ namespace MaterialDesignThemes.Wpf
                 Interval = banner.DeactivateStoryboardDuration
             };
             dispatcherTimer.Tick += DeactivateStoryboardDispatcherTimerOnTick;
-            dispatcherTimer.Start();            
+            dispatcherTimer.Start();
         }
 
-        private static void DeactivateStoryboardDispatcherTimerOnTick(object sender, EventArgs eventArgs)
+        private static void DeactivateStoryboardDispatcherTimerOnTick(object? sender, EventArgs eventArgs)
         {
-            var dispatcherTimer = (DispatcherTimer)sender;
-            dispatcherTimer.Stop(); 
-            dispatcherTimer.Tick -= DeactivateStoryboardDispatcherTimerOnTick;
-            var source = (Tuple<Banner, BannerMessage>)dispatcherTimer.Tag;
-            OnDeactivateStoryboardCompleted(source.Item1, source.Item2);
+            if (sender is DispatcherTimer dispatcherTimer)
+            {
+                dispatcherTimer.Stop();
+                dispatcherTimer.Tick -= DeactivateStoryboardDispatcherTimerOnTick;
+                var source = (Tuple<Banner, BannerMessage>)dispatcherTimer.Tag;
+                OnDeactivateStoryboardCompleted(source.Item1, source.Item2);
+            }
         }
-    }    
+
+        public static readonly DependencyProperty ActionButtonPlacementProperty = DependencyProperty.Register(
+            nameof(ActionButtonPlacement), typeof(BannerActionButtonPlacementMode), typeof(Banner), new PropertyMetadata(BannerActionButtonPlacementMode.Auto));
+
+        public BannerActionButtonPlacementMode ActionButtonPlacement
+        {
+            get => (BannerActionButtonPlacementMode) GetValue(ActionButtonPlacementProperty);
+            set => SetValue(ActionButtonPlacementProperty, value);
+        }
+    }
 }

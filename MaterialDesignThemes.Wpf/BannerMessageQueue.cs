@@ -12,54 +12,58 @@ namespace MaterialDesignThemes.Wpf
 {
     public class BannerMessageQueue : IBannerMessageQueue, IDisposable
     {
+        private readonly Dispatcher _dispatcher;
         private readonly TimeSpan _messageDuration;
         private readonly HashSet<Banner> _pairedBanners = new HashSet<Banner>();
         private readonly LinkedList<BannerMessageQueueItem> _bannerMessages = new LinkedList<BannerMessageQueueItem>();
+        private readonly object _bannerMessagesLock = new object();
         private readonly ManualResetEvent _disposedEvent = new ManualResetEvent(false);
         private readonly ManualResetEvent _pausedEvent = new ManualResetEvent(false);
-        private readonly ManualResetEvent _messageWaitingEvent = new ManualResetEvent(false);
-        private Tuple<BannerMessageQueueItem, DateTime> _latestShownItem;
+        private readonly SemaphoreSlim _showMessageSemaphore = new SemaphoreSlim(1, 1);
+        
         private int _pauseCounter;
         private bool _isDisposed;
 
-        #region private class MouseNotOverManagedWaitHandle : IDisposable
+		/// <summary>
+        /// If set, the active banner will be closed.
+        /// </summary>
+        /// <remarks>
+        /// Available only while the banner is displayed.
+        /// Should be locked by <see cref="_bannerMessagesLock"/>.
+        /// </remarks>
+        private ManualResetEvent? _closeBannerEvent;
+
+        /// <summary>
+        /// Gets the <see cref="System.Windows.Threading.Dispatcher"/> this <see cref="BannerMessageQueue"/> is associated with.
+        /// </summary>
+        internal Dispatcher Dispatcher => _dispatcher;
+        
+		#region MouseNotOverManagedWaitHandle
 
         private class MouseNotOverManagedWaitHandle : IDisposable
         {
+			private readonly UIElement _uiElement;
             private readonly ManualResetEvent _waitHandle;
             private readonly ManualResetEvent _disposedWaitHandle = new ManualResetEvent(false);
-            private Action _cleanUp;
-            private bool _isWaitHandleDisposed;
+            private bool _isDisposed;
             private readonly object _waitHandleGate = new object();
 
             public MouseNotOverManagedWaitHandle(UIElement uiElement)
             {
-                if (uiElement == null) throw new ArgumentNullException(nameof(uiElement));
+                _uiElement = uiElement ?? throw new ArgumentNullException(nameof(uiElement));
 
                 _waitHandle = new ManualResetEvent(!uiElement.IsMouseOver);
                 uiElement.MouseEnter += UiElementOnMouseEnter;
                 uiElement.MouseLeave += UiElementOnMouseLeave;
-
-                _cleanUp = () =>
-                {
-                    uiElement.MouseEnter -= UiElementOnMouseEnter;
-                    uiElement.MouseLeave -= UiElementOnMouseLeave;
-                    lock (_waitHandleGate)
-                    {
-                        _waitHandle.Dispose();
-                        _isWaitHandleDisposed = true;
-                    }
-                    _disposedWaitHandle.Set();
-                    _disposedWaitHandle.Dispose();
-                    _cleanUp = () => { };
-                };
             }
 
-            public WaitHandle WaitHandle => _waitHandle;
+            public EventWaitHandle WaitHandle => _waitHandle;
+			
+			private void UiElementOnMouseEnter(object sender, MouseEventArgs mouseEventArgs) => _waitHandle.Reset();
 
-            private void UiElementOnMouseLeave(object sender, MouseEventArgs mouseEventArgs)
+            private async void UiElementOnMouseLeave(object sender, MouseEventArgs mouseEventArgs)
             {
-                Task.Factory.StartNew(() =>
+                await Task.Run(() =>
                 {
                     try
                     {
@@ -67,104 +71,63 @@ namespace MaterialDesignThemes.Wpf
                     }
                     catch (ObjectDisposedException)
                     {
-                        /* we are we suppresing this? 
+                        /* we are we suppressing this? 
                          * as we have switched out wait onto another thread, so we don't block the UI thread, the
                          * _cleanUp/Dispose() action might also happen, and the _disposedWaitHandle might get disposed
-                         * just before we WaitOne. We wond add a lock in the _cleanUp because it might block for 2 seconds.
+                         * just before we WaitOne. We won't add a lock in the _cleanUp because it might block for 2 seconds.
                          * We could use a Monitor.TryEnter in _cleanUp and run clean up after but oh my gosh it's just getting
                          * too complicated for this use case, so for the rare times this happens, we can swallow safely                         
                          */
                     }
 
-                }).ContinueWith(t =>
+                });
+				if (((UIElement)sender).IsMouseOver) return;
+                lock (_waitHandleGate)
                 {
-                    if (((UIElement) sender).IsMouseOver) return;
-                    lock (_waitHandleGate)
-                    {
-                        if (!_isWaitHandleDisposed)
-                            _waitHandle.Set();
-                    }
-                }, TaskScheduler.FromCurrentSynchronizationContext());
-            }
-
-            private void UiElementOnMouseEnter(object sender, MouseEventArgs mouseEventArgs)
-            {
-                _waitHandle.Reset();
+                    if (!_isDisposed)
+                        _waitHandle.Set();
+                }
             }
 
             public void Dispose()
             {
-                _cleanUp();
+                if (_isDisposed)
+                    return;
+
+				_uiElement.MouseEnter -= UiElementOnMouseEnter;
+                _uiElement.MouseLeave -= UiElementOnMouseLeave;
+                lock (_waitHandleGate)
+				{
+                    _waitHandle.Dispose();
+                    _isDisposed = true;
+                }
+                _disposedWaitHandle.Set();
+                _disposedWaitHandle.Dispose();
             }
         }
 
         #endregion
 
-        #region private class DurationMonitor
-
-        private class DurationMonitor
-        {
-            private DateTime _completionTime;
-
-            private DurationMonitor(
-                TimeSpan minimumDuration,
-                WaitHandle pausedWaitHandle,
-                EventWaitHandle signalWhenDurationPassedWaitHandle,
-                WaitHandle ceaseWaitHandle)
-            {
-                if (pausedWaitHandle == null) throw new ArgumentNullException(nameof(pausedWaitHandle));
-                if (signalWhenDurationPassedWaitHandle == null)
-                    throw new ArgumentNullException(nameof(signalWhenDurationPassedWaitHandle));
-                if (ceaseWaitHandle == null) throw new ArgumentNullException(nameof(ceaseWaitHandle));
-
-                _completionTime = DateTime.Now.Add(minimumDuration);
-
-                //this keeps the event waiting simpler, rather that actually watching play -> pause -> play -> pause etc
-                var granularity = TimeSpan.FromMilliseconds(200);
-
-                Task.Factory.StartNew(() =>
-                {
-                    //keep upping the completion time in case it's paused...
-                    while (DateTime.Now < _completionTime && !ceaseWaitHandle.WaitOne(granularity))
-                    {
-                        if (pausedWaitHandle.WaitOne(TimeSpan.Zero))
-                        {
-                            _completionTime = _completionTime.Add(granularity);
-                        }
-                    }
-
-                    if (DateTime.Now >= _completionTime)
-                        signalWhenDurationPassedWaitHandle.Set();
-                });
-            }
-
-            public static DurationMonitor Start(TimeSpan minimumDuration,
-                WaitHandle pausedWaitHandle,
-                EventWaitHandle signalWhenDurationPassedWaitHandle,
-                WaitHandle ceaseWaitHandle)
-            {
-                return new DurationMonitor(minimumDuration, pausedWaitHandle, signalWhenDurationPassedWaitHandle,
-                    ceaseWaitHandle);
-            }
-        }
-
-        #endregion
 
         public BannerMessageQueue() : this(TimeSpan.FromSeconds(30))
         {
         }
 
         public BannerMessageQueue(TimeSpan messageDuration)
+			: this(messageDuration, Dispatcher.FromThread(Thread.CurrentThread)
+                          ?? throw new InvalidOperationException("BannerMessageQueue must be created in a dispatcher thread"))
+        { }
+        public BannerMessageQueue(TimeSpan messageDuration, Dispatcher dispatcher)
         {
             _messageDuration = messageDuration;
-            Task.Factory.StartNew(PumpAsync);
+            _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
         }
 
-        //oh if only I had Disposable.Create in this lib :)  tempted to copy it in like dragabalz, 
-        //but this is an internal method so no one will know my direty Action disposer...
+        //oh if only I had Disposable.Create in this lib :)  tempted to copy it in like dragabalz,
+        //but this is an internal method so no one will know my dirty Action disposer...
         internal Action Pair(Banner banner)
         {
-            if (banner == null) throw new ArgumentNullException(nameof(banner));
+            if (banner is null) throw new ArgumentNullException(nameof(banner));
 
             _pairedBanners.Add(banner);
 
@@ -186,70 +149,53 @@ namespace MaterialDesignThemes.Wpf
         }
 
         /// <summary>
-        /// Gets or sets a value that indicates whether this message queue displays messages without discarding duplicates. 
+        /// Gets or sets a value that indicates whether this message queue displays messages without discarding duplicates.
         /// True to show every message even if there are duplicates.
         /// </summary>
         public bool IgnoreDuplicate { get; set; }
 
-        public void Enqueue(object content)
-        {
-            Enqueue(content, false);
-        }
+        public void Enqueue(object content) => Enqueue(content, false);
 
         public void Enqueue(object content, bool neverConsiderToBeDuplicate)
-        {
-            if (content == null) throw new ArgumentNullException(nameof(content));
+        	=> Enqueue(content, null, null, null, false, neverConsiderToBeDuplicate);
 
-            Enqueue(content, null, null, null, false, neverConsiderToBeDuplicate);
-        }
+        public void Enqueue(object content, object? actionContent, Action? actionHandler)
+            => Enqueue(content, actionContent, actionHandler, false);
 
-        public void Enqueue(object content, object actionContent, Action actionHandler)
-        {
-            Enqueue(content, actionContent, actionHandler, false);
-        }
+        public void Enqueue(object content, object? actionContent, Action? actionHandler, bool promote)
+            => Enqueue(content, actionContent, _ => actionHandler?.Invoke(), promote, false, false);
 
-        public void Enqueue(object content, object actionContent, Action actionHandler, bool promote)
-        {
-            if (content == null) throw new ArgumentNullException(nameof(content));
-            if (actionContent == null) throw new ArgumentNullException(nameof(actionContent));
-            if (actionHandler == null) throw new ArgumentNullException(nameof(actionHandler));
-            
-            Enqueue(content, actionContent, _ => actionHandler(), promote, false, false);
-        }
+        public void Enqueue<TArgument>(object content, object? actionContent, Action<TArgument?>? actionHandler,
+            TArgument? actionArgument)
+            => Enqueue(content, actionContent, actionHandler, actionArgument, false, false);
 
-        public void Enqueue<TArgument>(object content, object actionContent, Action<TArgument> actionHandler,
-            TArgument actionArgument)
-        {
-            Enqueue(content, actionContent, actionHandler, actionArgument, false, false);
-        }
-
-        public void Enqueue<TArgument>(object content, object actionContent, Action<TArgument> actionHandler,
-            TArgument actionArgument, bool promote) =>
+        public void Enqueue<TArgument>(object content, object? actionContent, Action<TArgument?>? actionHandler,
+            TArgument? actionArgument, bool promote) =>
             Enqueue(content, actionContent, actionHandler, actionArgument, promote, promote);
 
-        public void Enqueue<TArgument>(object content, object actionContent, Action<TArgument> actionHandler,
-            TArgument actionArgument, bool promote, bool neverConsiderToBeDuplicate, TimeSpan? durationOverride = null)
+        public void Enqueue<TArgument>(object content, object? actionContent, Action<TArgument?>? actionHandler,
+            TArgument? actionArgument, bool promote, bool neverConsiderToBeDuplicate, TimeSpan? durationOverride = null)
         {
-            if (content == null) throw new ArgumentNullException(nameof(content));
+            if (content is null) throw new ArgumentNullException(nameof(content));
 
-            if (actionContent == null ^ actionHandler == null)
+            if (actionContent is null ^ actionHandler is null)
             {
                 throw new ArgumentException("All action arguments must be provided if any are provided.",
                     actionContent != null ? nameof(actionContent) : nameof(actionHandler));
             }
 
-            Action<object> handler = actionHandler != null
-                ? new Action<object>(argument => actionHandler((TArgument)argument))
+            Action<object?>? handler = actionHandler != null
+                ? new Action<object?>(argument => actionHandler((TArgument?)argument))
                 : null;
-            Enqueue(content, actionContent, handler, actionArgument, promote, neverConsiderToBeDuplicate);
+            Enqueue(content, actionContent, handler, actionArgument, promote, neverConsiderToBeDuplicate, durationOverride);
         }
 
-        public void Enqueue(object content, object actionContent, Action<object> actionHandler,
-            object actionArgument, bool promote, bool neverConsiderToBeDuplicate, TimeSpan? durationOverride = null)
+        public void Enqueue(object content, object? actionContent, Action<object?>? actionHandler,
+            object? actionArgument, bool promote, bool neverConsiderToBeDuplicate, TimeSpan? durationOverride = null)
         {
-            if (content == null) throw new ArgumentNullException(nameof(content));
+            if (content is null) throw new ArgumentNullException(nameof(content));
 
-            if (actionContent == null ^ actionHandler == null)
+            if (actionContent is null ^ actionHandler is null)
             {
                 throw new ArgumentException("All action arguments must be provided if any are provided.",
                     actionContent != null ? nameof(actionContent) : nameof(actionHandler));
@@ -257,141 +203,175 @@ namespace MaterialDesignThemes.Wpf
 
             var bannerMessageQueueItem = new BannerMessageQueueItem(content, durationOverride ?? _messageDuration,
                 actionContent, actionHandler, actionArgument, promote, neverConsiderToBeDuplicate);
-            if (promote)
-                InsertAsLastNotPromotedNode(bannerMessageQueueItem);
-            else
-                _bannerMessages.AddLast(bannerMessageQueueItem);
-
-            _messageWaitingEvent.Set();
+            InsertItem(bannerMessageQueueItem);
         }
 
-        private void InsertAsLastNotPromotedNode(BannerMessageQueueItem bannerMessageQueueItem)
+        private void InsertItem(BannerMessageQueueItem item)
         {
-            var node = _bannerMessages.First;
-            while (node != null)
+            lock (_bannerMessagesLock)
             {
-                if (!node.Value.IsPromoted)
+                var added = false;
+                var node = _bannerMessages.First;
+                while (node != null)
                 {
-                    _bannerMessages.AddBefore(node, bannerMessageQueueItem);
-                    return;
-                }
-                node = node.Next;
-            }
-            _bannerMessages.AddLast(bannerMessageQueueItem);
-        }
+                    if (!IgnoreDuplicate && item.IsDuplicate(node.Value))
+                        return;
 
-        private async void PumpAsync()
-        {
-            while (!_isDisposed)
-            {
-                var eventId = WaitHandle.WaitAny(new WaitHandle[] { _disposedEvent, _messageWaitingEvent });
-                if (eventId == 0) continue;
-                var exemplar = _pairedBanners.FirstOrDefault();
-                if (exemplar == null)
-                {
-                    Trace.TraceWarning(
-                        "A banner message as waiting, but no Banner instances are assigned to the message queue.");
-                    _disposedEvent.WaitOne(TimeSpan.FromSeconds(1));
-                    continue;
-                }
-
-                //find a target
-                var banner = await FindBanner(exemplar.Dispatcher);
-
-                //show message
-                if (banner != null)
-                {
-                    var message = _bannerMessages.First.Value;
-                    _bannerMessages.RemoveFirst();
-                    if (_latestShownItem == null
-                        || IgnoreDuplicate
-                        || message.IgnoreDuplicate
-                        || !Equals(_latestShownItem.Item1.Content, message.Content)
-                        || !Equals(_latestShownItem.Item1.ActionContent, message.ActionContent)
-                        || _latestShownItem.Item2 <= DateTime.Now.Subtract(_latestShownItem.Item1.Duration))
+                    if (item.IsPromoted && !node.Value.IsPromoted)
                     {
-                        await ShowAsync(banner, message);
-                        _latestShownItem = new Tuple<BannerMessageQueueItem, DateTime>(message, DateTime.Now);
+                        _bannerMessages.AddBefore(node, item);
+                        added = true;
+                        break;
                     }
+                    node = node.Next;
                 }
-                else
-                {
-                    //no banner could be found, take a break
-                    _disposedEvent.WaitOne(TimeSpan.FromSeconds(1));
-                }
+                if (!added)
+                    _bannerMessages.AddLast(item);
 
-                if (_bannerMessages.Count > 0)
-                    _messageWaitingEvent.Set();
-                else
-                    _messageWaitingEvent.Reset();
+            }
+
+            _dispatcher.InvokeAsync(ShowNextAsync);
+        }
+		/// <summary>
+        /// Clear the message queue and close the active banner.
+        /// This method can be called from any thread.
+        /// </summary>
+        public void Clear()
+        {
+            lock (_bannerMessagesLock)
+            {
+                _bannerMessages.Clear();
+                _closeBannerEvent?.Set();
             }
         }
+            
 
-        private DispatcherOperation<Banner> FindBanner(Dispatcher dispatcher)
+        private void StartDuration(TimeSpan minimumDuration, EventWaitHandle durationPassedWaitHandle)
         {
-            return dispatcher.InvokeAsync(() =>
+            if (durationPassedWaitHandle is null) throw new ArgumentNullException(nameof(durationPassedWaitHandle));
+
+            var completionTime = DateTime.Now.Add(minimumDuration);
+
+            //this keeps the event waiting simpler, rather that actually watching play -> pause -> play -> pause etc
+            var granularity = TimeSpan.FromMilliseconds(200);
+
+            Task.Run(() =>
             {
-                return _pairedBanners.FirstOrDefault(sb =>
-                {
-                    if (!sb.IsLoaded || sb.Visibility != Visibility.Visible) return false;
-                    var window = Window.GetWindow(sb);
-                    return window?.WindowState != WindowState.Minimized;
-                });
+                while (true)
+				{
+                    if (DateTime.Now >= completionTime) // time is over
+                    {
+                        durationPassedWaitHandle.Set();
+                        break;
+                    }
+
+                    if (_disposedEvent.WaitOne(granularity)) // queue is disposed
+                        break;
+
+                	if (durationPassedWaitHandle.WaitOne(TimeSpan.Zero)) // manual exit (like message action click)
+                        break;
+
+                    if (_pausedEvent.WaitOne(TimeSpan.Zero)) // on pause completion time is extended
+                        completionTime = completionTime.Add(granularity);
+                }
             });
         }
 
-        private async Task ShowAsync(Banner banner, BannerMessageQueueItem messageQueueItem)
+
+
+private async Task ShowNextAsync()
         {
-            await Task.Run(async () =>
+            await _showMessageSemaphore.WaitAsync()
+                .ConfigureAwait(true);
+            try
+            {
+                Banner banner;
+                while (true)
                 {
-                    //create and show the message, setting up all the handles we need to wait on
-                    var actionClickWaitHandle = new ManualResetEvent(false);
-                    var mouseNotOverManagedWaitHandle =
-                        await
-                            banner.Dispatcher.InvokeAsync(
-                                () => CreateAndShowMessage(banner, messageQueueItem, actionClickWaitHandle));
-                    var durationPassedWaitHandle = new ManualResetEvent(false);
-                    DurationMonitor.Start(messageQueueItem.Duration.Add(banner.ActivateStoryboardDuration),
-                        _pausedEvent, durationPassedWaitHandle, _disposedEvent);
+                    if (_isDisposed || _dispatcher.HasShutdownStarted)
+                        return;
 
-                    //wait until time span completed (including pauses and mouse overs), or the action is clicked
-                    await WaitForCompletionAsync(mouseNotOverManagedWaitHandle, durationPassedWaitHandle, actionClickWaitHandle);
+                    banner = FindBanner();
+                    if (banner != null)
+                        break;
 
-                    //close message on banner
-                    await
-                        banner.Dispatcher.InvokeAsync(
-                            () => banner.SetCurrentValue(Banner.IsActiveProperty, false));
+                    Trace.TraceWarning("A banner message is waiting, but no banner instances are assigned to the message queue.");
+                    await Task.Delay(TimeSpan.FromSeconds(1)).ConfigureAwait(true);
+                }
 
-                    //we could wait for the animation event, but just doing 
-                    //this for now...at least it is prevent extra call back hell
-                    _disposedEvent.WaitOne(banner.DeactivateStoryboardDuration);
-
-                    //remove message on banner
-                    await banner.Dispatcher.InvokeAsync(
-                        () => banner.SetCurrentValue(Banner.MessageProperty, null));
-
-                    mouseNotOverManagedWaitHandle.Dispose();
-                    durationPassedWaitHandle.Dispose();
-
-                })
-                .ContinueWith(t =>
+                LinkedListNode<BannerMessageQueueItem>? messageNode;
+                lock (_bannerMessagesLock)
                 {
-                    if (t.Exception == null) return;
+                    messageNode = _bannerMessages.First;
+                    if (messageNode is null)
+                        return;
+                    _closeBannerEvent = new ManualResetEvent(false);
+                }
 
-                    var exc = t.Exception.InnerExceptions.FirstOrDefault() ?? t.Exception;
-                    Trace.WriteLine("Error occured whilst showing Banner, exception will be rethrown.");
-                    Trace.WriteLine($"{exc.Message} ({exc.GetType().FullName})");
-                    Trace.WriteLine(exc.StackTrace);
+                await ShowAsync(banner, messageNode.Value, _closeBannerEvent)
+                    .ConfigureAwait(false);
 
-                    throw t.Exception;
-                });
+                lock (_bannerMessagesLock)
+                {
+                    if (messageNode.List == _bannerMessages)    // Check if it has not been cleared.
+                        _bannerMessages.Remove(messageNode);
+                    _closeBannerEvent.Dispose();
+                    _closeBannerEvent = null;
+                }
+            }
+            finally
+            {
+                _showMessageSemaphore.Release();
+            }
+
+            Banner FindBanner() => _pairedBanners.FirstOrDefault(sb =>
+            {
+                if (!sb.IsLoaded || sb.Visibility != Visibility.Visible) return false;
+                var window = Window.GetWindow(sb);
+                return window?.WindowState != WindowState.Minimized;
+            });
         }
 
-        private static MouseNotOverManagedWaitHandle CreateAndShowMessage(UIElement banner,
+        private async Task ShowAsync(Banner banner, BannerMessageQueueItem messageQueueItem, ManualResetEvent actionClickWaitHandle)
+        {
+            //create and show the message, setting up all the handles we need to wait on
+            var tuple = CreateAndShowMessage(banner, messageQueueItem, actionClickWaitHandle);
+            var bannerMessage = tuple.Item1;
+            var mouseNotOverManagedWaitHandle = tuple.Item2;
+
+            var durationPassedWaitHandle = new ManualResetEvent(false);
+            StartDuration(messageQueueItem.Duration.Add(banner.ActivateStoryboardDuration), durationPassedWaitHandle);
+
+            //wait until time span completed (including pauses and mouse overs), or the action is clicked
+            await WaitForCompletionAsync(mouseNotOverManagedWaitHandle, durationPassedWaitHandle, actionClickWaitHandle);
+
+            //close message on banner
+            banner.SetCurrentValue(Banner.IsActiveProperty, false);
+
+            //we could wait for the animation event, but just doing
+            //this for now...at least it is prevent extra call back hell
+            await Task.Delay(banner.DeactivateStoryboardDuration);
+
+            //this prevents missing resource warnings after the message is removed from the Banner
+            //see https://github.com/MaterialDesignInXAML/MaterialDesignInXamlToolkit/issues/2040
+            bannerMessage.Resources = BannerMessage.defaultResources;
+
+            //remove message on banner
+            banner.SetCurrentValue(Banner.MessageProperty, null);
+
+            mouseNotOverManagedWaitHandle.Dispose();
+            durationPassedWaitHandle.Dispose();
+        }
+
+        private static Tuple<BannerMessage, MouseNotOverManagedWaitHandle> CreateAndShowMessage(UIElement banner,
             BannerMessageQueueItem messageQueueItem, EventWaitHandle actionClickWaitHandle)
         {
             var clickCount = 0;
-            var bannerMessage = Create(messageQueueItem);
+            var bannerMessage = new BannerMessage
+            {
+                Content = messageQueueItem.Content,
+                ActionContent = messageQueueItem.ActionContent
+            };
             bannerMessage.ActionClick += (sender, args) =>
             {
                 if (++clickCount == 1)
@@ -400,31 +380,37 @@ namespace MaterialDesignThemes.Wpf
             };
             banner.SetCurrentValue(Banner.MessageProperty, bannerMessage);
             banner.SetCurrentValue(Banner.IsActiveProperty, true);
-            return new MouseNotOverManagedWaitHandle(banner);
+            return Tuple.Create(bannerMessage, new MouseNotOverManagedWaitHandle(banner));
         }
 
         private static async Task WaitForCompletionAsync(
             MouseNotOverManagedWaitHandle mouseNotOverManagedWaitHandle,
-            WaitHandle durationPassedWaitHandle, WaitHandle actionClickWaitHandle)
+            EventWaitHandle durationPassedWaitHandle,
+            EventWaitHandle actionClickWaitHandle)
         {
-            await Task.WhenAny(
-                Task.Factory.StartNew(() =>
+            var durationTask = Task.Run(() =>
+            {
+                WaitHandle.WaitAll(new WaitHandle[]
                 {
-                    WaitHandle.WaitAll(new[]
-                    {
-                        mouseNotOverManagedWaitHandle.WaitHandle,
-                        durationPassedWaitHandle
-                    });
-                }),
-                Task.Factory.StartNew(actionClickWaitHandle.WaitOne));
+                    mouseNotOverManagedWaitHandle.WaitHandle,
+                    durationPassedWaitHandle
+                });
+            });
+            var actionClickTask = Task.Run(actionClickWaitHandle.WaitOne);
+            await Task.WhenAny(durationTask, actionClickTask);
+
+            mouseNotOverManagedWaitHandle.WaitHandle.Set();
+            durationPassedWaitHandle.Set();
+            actionClickWaitHandle.Set();
+
+            await Task.WhenAll(durationTask, actionClickTask);
         }
 
         private static void DoActionCallback(BannerMessageQueueItem messageQueueItem)
         {
             try
             {
-                messageQueueItem.ActionHandler(messageQueueItem.ActionArgument);
-
+                messageQueueItem.ActionHandler?.Invoke(messageQueueItem.ActionArgument);
             }
             catch (Exception exc)
             {
@@ -434,14 +420,6 @@ namespace MaterialDesignThemes.Wpf
 
                 throw;
             }
-        }
-
-        private static BannerMessage Create(BannerMessageQueueItem messageQueueItem)
-        {
-            return new BannerMessage {
-                Content = messageQueueItem.Content,
-                ActionContent = messageQueueItem.ActionContent
-            };
         }
 
         public void Dispose()
