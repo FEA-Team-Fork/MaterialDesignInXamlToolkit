@@ -13,6 +13,8 @@
     <NoWarn>CS1591;CS1574</NoWarn>
     <ExtrasEnableWpfProjectSetup>true</ExtrasEnableWpfProjectSetup>
     <DocumentationFile>bin\$(Configuration)\MaterialDesignThemes.Wpf.xml</DocumentationFile>
+    <AssemblyName>MaterialDesignThemes.Wpf</AssemblyName>
+    <RootNamespace>MaterialDesignThemes.Wpf</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
     <Resource Include="Resources\Roboto\*.ttf" />
